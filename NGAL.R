@@ -4,14 +4,22 @@ library(dplyr)
 
 getwd()
 ungl = read.csv("ungl.csv")
+#clean
+ungl=ungl%>%rename(NGAL=`urine.NGAL`)
+ungl=ungl%>%rename(GRL=`X32`)
+ungl=ungl%>%rename(Albumin=`X23`)
+
+ungl$diagnoses = ifelse(ungl$CKD=="y","CKD",
+                        ifelse(ungl$HRS=="y","HRS",
+                               ifelse(ungl$iAKI=="y","iAKI", 
+                                      ifelse(ungl$Prerenal=="y","Prerenal", "Control"))))       
+
+
+
 
 ungl1 = ungl%>% gather(`urine NGAL`,`AKI`,`HRS`,`iAKI`,`CKD`,`Prerenal`,key="Diagnosis",value="code")
 
 
-ungl$diagnoses = ifelse(ungl$CKD=="y","CKD",
-                        ifelse(ungl$HRS=="y","HRS",
-                        ifelse(ungl$iAKI=="y","iAKI", 
-                               ifelse(ungl$Prerenal=="y","Prerenal", "Control"))))       
 
 summary(as.factor(ungl$diagnoses))
 rm(ungl1)
@@ -22,9 +30,6 @@ ungl2= ungl%>% select(`urine.NGAL`,`feNa`,`diagnoses`,`CTP`,`Creat`,`MELD`,`Urin
 ungl$`urine NGAL`
 
 
-ungl=ungl%>%rename(NGAL=`urine.NGAL`)
-ungl=ungl%>%rename(GRL=`X32`)
-ungl=ungl%>%rename(Albumin=`X23`)
 
 fit <- aov(NGAL ~ diagnoses, data=ungl) 
 
@@ -42,6 +47,13 @@ unglngal = ungl %>%
   group_by(diagnoses) %>%
   summarize(n=n(),mn=mean(NGAL),sd=sd(NGAL)) %>%
   mutate(se=sd/sqrt(n),LCI=mn+qnorm(0.025)*se,UCI=mn+qnorm(0.975)*se)
+
+unglngal
+
+unglngalmed = ungl %>%
+  group_by(diagnoses) %>%
+  summarize(n=n(),median=median(NGAL),lower_quantile= quantile(NGAL,1/4),upper_quantile= quantile(NGAL,3/4),Interquartile_Range=IQR(NGAL)) 
+  
 
 
 unglfena = ungl %>%
@@ -165,3 +177,30 @@ t.test(ungl$NGAL~ungl$outcome90)
 unglsum1 = ungl %>% group_by(diagnoses,ascites)%>% summarize(count=n())
 unglsum1
 
+# plot for infection
+
+# 
+# 
+
+library(tidyverse)
+ungl= ungl %>%
+  mutate(infection=replace(infection, infection=="celluitis", "c"))
+  
+
+
+summary(as.factor(ungl$infection))
+#https://stackoverflow.com/questions/27909000/set-certain-values-to-na-with-dplyr
+
+ungl = if(ungl$infection=="cellulitis"){ungl$infection ="c"}
+str(ungl)
+
+
+
+# ROC Curves
+
+
+unglROC = ungl %>% filter(diagnoses=="HRS"| diagnoses=="iAKI")
+
+library(pROC)
+
+Roc
