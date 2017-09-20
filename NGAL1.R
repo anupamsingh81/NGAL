@@ -55,11 +55,11 @@ unglROC1 = ungl %>% filter(diagnoses=="Prerenal"| diagnoses=="HRS")
 
 unglROC$diagnoses= as.factor(unglROC$diagnoses)
 
-a=  roc(unglROC1$diagnoses,unglROC1$NGAL)
+a=  roc(unglROC$diagnoses,unglROC$NGAL)
 
-b=  roc(unglROC1$diagnoses,unglROC1$feNa)
+b=  roc(unglROC$diagnoses,unglROC$feNa)
 
-c=  roc(unglROC1$diagnoses,unglROC1$Urine.na)
+c=  roc(unglROC$diagnoses,unglROC$Urine.na)
 
 unglnames= ungl %>% select(NGAL,feNa,Urine.na,diagnoses)
 
@@ -107,7 +107,9 @@ print(tab1,nonnormal=npar,quote = TRUE,noSpaces = TRUE)
 
 
 
-
+roc.test(a,b)
+roc.test(b,c)
+roc.test(a,c)
 
 # steps ..copy table after print command with quote and no spaces set to True, 2. open librecalc, 3. select paste special 4. select unformatted text 5. select quote "" in spaces 6. Adjust width. 6. if aligned above below copy adjacently
 
