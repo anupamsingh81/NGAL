@@ -113,4 +113,40 @@ roc.test(a,c)
 
 # steps ..copy table after print command with quote and no spaces set to True, 2. open librecalc, 3. select paste special 4. select unformatted text 5. select quote "" in spaces 6. Adjust width. 6. if aligned above below copy adjacently
 
+summary(ungl)
+
+
+# Data clean
+#First look at summary of HbsAg ..two response p and Y wrongly printed instead of Y
+
+ungl$HBsAg.CLD[ungl$HBsAg.CLD=="Y"]<-"y"
+
+ungl$HBsAg.CLD[ungl$HBsAg.CLD=="p"]<-"y"
+
+
+ungl$HbsAg.CLD= droplevels(ungl$HBsAg.CLD) # drop unused levels , important without drop nothing will happen
+
+levels(ungl$HbsAg.CLD) # checking for drop
+
+ungl = ungl %>% mutate(outcome30=replace(outcome30,outcome30==":1","a"))
+
+
+# https://www.rdocumentation.org/packages/dplyr/versions/0.7.3/topics/case_when
+
+
+
+
+summary(as.factor(ungl$outcome30))
+
+ungl$outcome30[48] = "a"
+summary(ungl$outcome30)
+
+ungl$outcome30=droplevels(ungl$outcome30)
+
+
+summary(ungl)
+
+# remove duplicate 56 column of HbsAg CLD
+
+ungl[,56] <- NULL
 
