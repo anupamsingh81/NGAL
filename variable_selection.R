@@ -1,5 +1,5 @@
 library(Boruta)
-
+library(dplyr)
 traindata = ungl
 traindata[traindata == ""] <- NA # convert all missing valus into NA
 
@@ -99,3 +99,12 @@ boruta.train <- Boruta(outcome30~., data = df_complete, doTrace = 2)
   # plot a table of models showing variables in each model.
   # models are ordered by the selection statistic.
   plot(leaps,scale="r2")
+  
+  library(relaimpo)
+  
+  
+  lmMod <- glm(outcome30~ . , data = df_new,family=binomial())  # fit lm() model
+  
+  relImportance <- calc.relimp(lmMod, type = "lmg", rela = TRUE)  # calculate relative importance scaled to 100
+  
+  sort(relImportance$lmg, decreasing=TRUE) 
