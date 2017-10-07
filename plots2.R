@@ -44,7 +44,6 @@ library(plotROC)
 
 master_rock = master %>% select(diagnoses,NGAL,feNa,urine_na,urine_creat,creat)
 
-master_rock1 = master_rock %>% filter(diagnoses=="CKD"|diagnoses=="HRS") %>% mutate(diagnoses=ifelse(diagnoses=="HRS",1,0))
 
 longtest1 <- melt_roc(master_rock1, "diagnoses", c("NGAL","feNa","urine_na","urine_creat","creat"))
 
@@ -56,7 +55,93 @@ roc4
 
 
 
-longtest1 = gather(master_rock1,key=)
+library(pROC)
+library(OptimalCutpoints)
+library(tidyverse)
 
+master_rock1 = master_rock %>% filter(diagnoses=="CKD"|diagnoses=="HRS") %>% mutate(diagnoses=ifelse(diagnoses=="HRS",1,0))
+
+
+master_rock2 = master_rock %>% filter(diagnoses=="iAKI"|diagnoses=="HRS") %>% mutate(diagnoses=ifelse(diagnoses=="iAKI",1,0))
+
+master_rock3 = master_rock %>% filter(diagnoses=="Prerenal"|diagnoses=="HRS") %>% mutate(diagnoses=ifelse(diagnoses=="HRS",1,0))
+
+master_rock4 = master_rock %>% filter(diagnoses=="Prerenal"|diagnoses=="CKD") %>% mutate(diagnoses=ifelse(diagnoses=="Prerenal",1,0))
+
+
+
+
+
+a = roc(master_rock3$diagnoses,master_rock3$creat)
+
+plot(a,col="red")
+title(main ="ROC curve for Creatinine in differentiating between HRS and prerenal",line = 3.0)
+
+a$sensitivities
+a$specificities
+a$auc
+a$thresholds
+
+master_rock3 = as.data.frame(master_rock3)
+b= optimal.cutpoints(creat~diagnoses,tag.healthy=0,methods = "Youden",data=master_rock3) # dont use tibble in data, first convert to data frame or unsupported index error
+
+summary(b)
+
+
+
+
+
+b= optimal.cutpoints(master_rock2$creat~master_rock2$diagnoses,tag.healthy=0,methods = "Youden",data=master_rock2)
+
+
+summary(master_rock2$diagnoses)
+
+
+# dca
+
+source("dca.r")
+
+dca(data=master_rock2,outcome="diagnoses",predictors = "ngalpred")
+
+
+
+a1= glm(diagnoses~NGAL,family=binomial(),data=master_rock2)
+a1$fitted.values
+
+master_rock2$ngalpred = predict(a1,type="response")
+
+b1= glm(diagnoses~feNa,family=binomial(),data=master_rock2)
+
+master_rock2$feNapred = predict(b1,type="response")
+
+
+c1= glm(diagnoses~urine_na,family=binomial(),data=master_rock2)
+
+master_rock2$urinenapred = predict(c1,type="response")
+dca(data=master_rock2,outcome="diagnoses",predictors = c("feNapred","ngalpred","urinenapred"))
+
+
+# master_roc3
+dca(data=master_rock2,outcome="diagnoses",predictors = "ngalpred")
+
+
+
+a1= glm(diagnoses~NGAL,family=binomial(),data=master_rock3)
+
+
+master_rock3$ngalpred = predict(a1,type="response")
+
+b1= glm(diagnoses~feNa,family=binomial(),data=master_rock3)
+
+master_rock3$feNapred = predict(b1,type="response")
+
+
+c1= glm(diagnoses~urine_na,family=binomial(),data=master_rock3)
+
+master_rock3$urinenapred = predict(c1,type="response")
+dca(data=master_rock3,outcome="diagnoses",predictors = c("feNapred","ngalpred","urinenapred"))
+
+
+                                
 
 

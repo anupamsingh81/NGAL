@@ -210,7 +210,8 @@ master$outcome_31<- NULL
 summary(master)
 
 
-fac
+
+
 
 
 
