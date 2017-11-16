@@ -209,6 +209,8 @@ master$outcome_31<- NULL
 
 summary(master)
 
+write.csv(master,file="master.csv")
+
 
 
 

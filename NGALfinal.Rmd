@@ -1,0 +1,184 @@
+---
+title: "Predictors of Mortality in CLD with renal dysfunction"
+author: "Anupam kumar Singh, MD"
+date: "2 November 2017"
+output: html_document
+---
+
+we will try to evaluate factors affecting mortality in HRS .
+We have already calculated descritive statistics, done ANOVA of NGAL and done comparative ROC Aanalysis of biomarkers like FeNa,NGAL,Urine Na,Urine Creatinine  which are accessible along with master chart [here](https://drive.google.com/open?id=0B7gX8b7uHJW2LUhhYnF1NVNoUWc)
+
+Let us do survival analysis now, first dplyr::select limited variables
+
+```{r global_options, include=FALSE}
+knitr::opts_chunk$set(fig.width=12, fig.height=8, fig.path='Figs/',
+                      echo=FALSE, warning=FALSE, message=FALSE)
+```
+
+
+```{r}
+library(tidyverse)
+master= read.csv("master.csv")
+master1 = master %>% dplyr::select(diagnoses,MELD,CTP,serum_sodium,NGAL,feNa,age,outcome_30,outcome_90) %>% mutate(time30 = rep(30,length(outcome_30)),censor30=case_when(outcome_30=="d"~1,TRUE~0),time90 = rep(90,length(outcome_90)),censor90=case_when(outcome_30=="d"~1,TRUE~0)) %>% gather(time_period,days,time30,time90) %>% gather(censor_period,status,censor30,censor90)
+```
+
+
+Lets prepare our data for survival analysis
+
+```{r}
+master2 = master %>% dplyr::select(diagnoses,MELD,CTP,serum_sodium,NGAL,feNa,age,outcome_30,outcome_90) %>% mutate(days= case_when(outcome_30=="d"~30,TRUE~90),status=case_when(outcome_30=="d"~1,outcome_90=="d"~1,TRUE~0))
+```
+
+```{r}
+require("survival")
+require('survminer')
+ngalfit <- survfit(Surv(days, status) ~ 1, data = master2)
+summary(ngalfit)
+
+```
+
+survival plot from same
+
+```{r}
+ggsurvplot(ngalfit, conf.int=FALSE,data = master2)
+```
+
+
+classifying CTP n MELD for further use in survival curves
+
+```{r}
+master3 = master2 %>% filter(!(diagnoses=="Control")) %>% mutate(MELD_CAT = case_when(MELD<=10 ~ "MELD<=10",MELD<=18 ~ "MELD(10-18)",MELD<=24 ~ "MELD(19-24)",MELD>=25~"MELD>=25"),CTP_CATEGORIES= case_when(CTP<7~"A",CTP<10~"B",TRUE~"C"))
+```
+
+
+Plot survival by diagnosetic categories
+
+```{r}
+ngalfit1 <- survfit(Surv(days, status) ~ diagnoses, data = master3)
+summary(ngalfit1)
+```
+
+```{r}
+ggsurvplot(ngalfit1, conf.int=FALSE,data = master2)
+```
+
+Plot survival by MELD category
+
+```{r}
+ngalfit2 <- survfit(Surv(days, status) ~ MELD_CAT, data = master3)
+summary(ngalfit2)
+```
+
+```{r}
+ggsurvplot(ngalfit2, conf.int=FALSE,data = master3)
+```
+
+
+Plot survival by CTP
+
+```{r}
+ngalfit3<- survfit(Surv(days, status) ~ CTP_CATEGORIES, data = master3)
+summary(ngalfit3)
+```
+
+```{r}
+ggsurvplot(ngalfit3, conf.int=FALSE,data = master3)
+```
+
+Let us do multivariate analysis of mortality with predictive factor
+
+```{r}
+fit4 = glm(as.factor(outcome_30)~age+MELD,family=binomial(),data=master)
+summary(fit4)
+```
+
+Lets add NGAL  to model with MELD only and see improvement in AIC  has been used often
+
+```{r}
+fit5 = glm(as.factor(outcome_30)~age+NGAL+MELD,family=binomial(),data=master)
+summary(fit5)
+```
+
+so adding NGAL to model leads to decrease in AIC (>1) more than implying its an effective variable
+
+
+```{r}
+fit6 = glm(as.factor(outcome_30)~age+NGAL+MELD+serum_sodium,family=binomial(),data=master)
+summary(fit6)
+```
+
+
+Adding serum sodium doesnt lead to fall in AIC, so even adding an extra predictor isnt improving predictive power of our model
+
+```{r}
+anova(fit4,fit5)
+```
+
+Let's do ROC curve analysis of our model with MELD,NGAL
+
+```{r}
+master$predpr <- predict(fit5,type=c("response"))
+library(pROC)
+roccurve <- roc(outcome_30 ~ predpr,data=master)
+plot(roccurve)
+```
+
+```{r}
+auc(roccurve)
+```
+
+thus AUC of combined MELD n NGAL model is 0.818
+
+```{r}
+library(rms)
+
+master4 = master %>% dplyr::select(outcome_30,NGAL,MELD,age)
+master.dd= datadist(master4)
+
+
+options(datadist="master.dd")
+
+fit7 = lrm(outcome_30~age+NGAL+MELD,data=master4,x=TRUE,y=TRUE)
+fit7
+```
+
+Nomogram of model
+
+```{r}
+plot(nomogram(fit7,fun=function(x)1/(1+exp(-x)),  # or fun=plogis
+    fun.at=c(.001,.01,.05,seq(.1,.9,by=.1),.95,.99,.999),
+    funlabel="Risk of Death"))
+```
+
+
+Let's do internal validation bootstrap
+
+```{r}
+vl = validate(fit7,B=200)
+vl
+```
+
+so our bootstrapped model shows considerable optimism implying on external validation our model is going to fare worse
+
+lets's see calibration estimates
+
+
+```{r}
+plot(calibrate(fit7,B=200))
+```
+
+we can see while negative predictive probability is good the positive predictive of our model fares a bit worse
+
+```{r}
+library(strengejacke)
+
+sjp.glm(fit5)
+```
+
+Lets calculate adjusted odds ratio from our final model
+
+```{r}
+require(MASS)
+exp(cbind(coef(fit5), confint(fit5)))  
+```
+
